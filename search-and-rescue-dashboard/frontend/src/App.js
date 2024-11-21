@@ -12,6 +12,7 @@ const App = () => {
   const [responseData, setResponseData] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [spreadsheetData, setSpreadsheetData] = useState(null);
 
   const handleSearch = async () => {
     // Check if the username is empty
@@ -23,39 +24,19 @@ const App = () => {
     setLoading(true);
     setError(null);
 
-    /*try {
-      // Make an API call to your backend to fetch Instagram data
-      const response = await axios.post(
-        'http://localhost:5001/api/fetch-data', 
-        { username },
-        { headers: { 'Content-Type': 'application/json'}}
-      );
-      
-      // Extract the data from the response
-      const { sentiment, objects } = response.data;
-
-      // Update state with the results
-      setSentimentData(sentiment);
-      setObjectRecognitionData(objects);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to fetch data. Please try again.');
-    } finally {
-      setLoading(false);
-    }*/
     try {
       // Send a POST request to the backend with the username
       const response = await axios.post('http://localhost:5001/api/fetch-data', {
           username,
       });
   
-      // Set the response data from the server to state
-      setResponseData(response.data);
+      // Set the returned spreadsheet data
+      setSpreadsheetData(response.data);
     } catch (error) {
-      console.error('Error posting data:', error);
-      setError('Error connecting to the backend.');  // Show error message if something goes wrong
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch data. Please try again.');
     } finally {
-      setLoading(false);  // Set loading to false once the request is completed
+      setLoading(false);
     }
   };
 
@@ -71,15 +52,32 @@ const App = () => {
         />
         <button onClick={handleSearch}>Search</button>
       </div>
-      {/* Display response data or error */}
-      {responseData && (
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {spreadsheetData && (
         <div>
-          <h3>Response from Backend:</h3>
-          <p>Username: {responseData.username}</p>
+          <h3>Processed Data:</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Caption</th>
+                <th>Sentiment</th>
+                <th>Named Entities</th>
+              </tr>
+            </thead>
+            <tbody>
+              {spreadsheetData.map((row, index) => (
+                <tr key={index}>
+                  <td>{row.Caption}</td>
+                  <td>{row.Sentiment}</td>
+                  <td>{row.Named_Entities}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-      {sentimentData && <SentimentAnalysis data={sentimentData} />}
-      {objectRecognitionData && <ObjectRecognition data={objectRecognitionData} />}
     </div>
   );
 };

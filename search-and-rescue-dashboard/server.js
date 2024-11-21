@@ -1,6 +1,7 @@
 // Import the required packages
 const express = require('express');
 const cors = require('cors');
+const { spawn } = require('child_process');
 
 // Create an Express app
 const app = express();
@@ -21,10 +22,41 @@ app.post('/api/fetch-data', (req, res) => {
   if (!username) {
     return res.status(400).json({ error: 'Username is required' });
   } 
-  res.json({ username });
+
+  // Call the Python script with the username
+  const pythonProcess = spawn('python', ['process_instagram.py', username]);
+  let output = '';
+  let errorOutput = '';
+
+  // Capture Python script stdout
+  pythonProcess.stdout.on('data', (data) => {
+    output += data.toString();
+  });
+
+  // Capture Python script stderr
+  pythonProcess.stderr.on('data', (data) => {
+    errorOutput += data.toString();
+  });
+
+  // Handle the end of the Python process
+  pythonProcess.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`Python script exited with code ${code}: ${errorOutput}`);
+      return res.status(500).json({ error: 'Failed to process data.' });
+    }
+
+    try {
+      // Parse the Python script output (assumes JSON output for React)
+      const result = JSON.parse(output);
+      res.json(result);
+    } catch (error) {
+      console.error('Error parsing Python script output:', error);
+      res.status(500).json({ error: 'Error processing data.' });
+    }
+  });
 });
 
-// Start the server on port 5000
+// Start the server on port 5001
 app.listen(5001, () => {
   console.log('Backend running on http://localhost:5001');
 });
