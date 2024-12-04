@@ -6,7 +6,8 @@ import json
 import requests
 import io
 import logging
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import base64
 import os
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification, AutoModelForTokenClassification, SegformerImageProcessor, SegformerForSemanticSegmentation, BlipProcessor, BlipForConditionalGeneration
 from dotenv import load_dotenv
@@ -73,6 +74,26 @@ def detect_objects(image):
             })
     return objects
 
+def draw_bounding_boxes(image, objects_detected):
+    """
+    Draw bounding boxes on the image for detected objects.
+    """
+    draw = ImageDraw.Draw(image)
+
+    for obj in objects_detected:
+        label = obj["label"]
+        coordinates = obj["coordinates"]  # [x_min, y_min, x_max, y_max]
+        draw.rectangle(coordinates, outline="red", width=3)  # Draw the box
+        draw.text((coordinates[0], coordinates[1] - 10), label, fill="red")  # Add label
+
+    # Save the processed image or return as base64
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return base64_image
+
+
+
 def get_instagram_captions(username, output_file_path="captions.csv", max_posts=20):
     L = instaloader.Instaloader()
     
@@ -122,12 +143,16 @@ def get_instagram_captions(username, output_file_path="captions.csv", max_posts=
     return output_file_path
 
 
-def process_captions(input_file_path, output_file_path):
-    df = pd.read_csv(input_file_path)
-    
-    if "Caption" not in df.columns:
-        raise ValueError("Input spreadsheet must have a column named 'Caption'.")
+def analyze_caption(caption):
+    """
+    Analyze the sentiment and named entities of a given caption.
 
+    Parameters:
+        caption (str): The text caption to analyze.
+
+    Returns:
+        dict: A dictionary containing the sentiment and recognized entities.
+    """
     # sentiment model
     sentiment_model_name = "nlptown/bert-base-multilingual-uncased-sentiment"
     sentiment_tokenizer = AutoTokenizer.from_pretrained(sentiment_model_name)
@@ -148,40 +173,33 @@ def process_captions(input_file_path, output_file_path):
         "5 stars": "positive"
     }
 
-    sentiments = []
-    named_entities = []
+    # Perform sentiment analysis
+    sentiment_result = sentiment_pipeline(caption)
+    star_label = sentiment_result[0]["label"].lower()
+    sentiment_label = star_to_sentiment.get(star_label, "unknown")
 
-    for caption in df["Caption"]:
-        # sentiment analysis
-        sentiment_result = sentiment_pipeline(caption)
-        star_label = sentiment_result[0]["label"].lower()
-        sentiment_label = star_to_sentiment.get(star_label, "unknown")
-        sentiments.append(sentiment_label)
+    # Perform named entity recognition
+    ner_results = ner_pipeline(caption)
+    recognized_entities = []
+    current_entity = ""
 
-        # named entity recognition
-        ner_results = ner_pipeline(caption)
-        entity_texts = []
-        entity_text = ""
-        for entity in ner_results:
-            if entity["word"].startswith("##"):
-                entity_text += entity["word"][2:]
-            else:
-                if entity_text:
-                    entity_texts.append(entity_text)
-                entity_text = entity["word"]
-        if entity_text:
-            entity_texts.append(entity_text)
-        named_entities.append(", ".join(entity_texts))
+    for entity in ner_results:
+        if entity["word"].startswith("##"):
+            current_entity += entity["word"][2:]
+        else:
+            if current_entity:
+                recognized_entities.append(current_entity)
+            current_entity = entity["word"]
 
+    # Append the last entity if it exists
+    if current_entity:
+        recognized_entities.append(current_entity)
 
-    # Add new columns to the DataFrame
-    df["Sentiment"] = sentiments
-    df["Named_Entities"] = named_entities
-
-    # Save the processed file
-    df.to_csv(output_file_path, index=False)
-    #print(f"Processed file saved at: {output_file_path}")
-    return output_file_path if os.path.exists(output_file_path) else None
+    # Return sentiment and entities
+    return {
+        "sentiment": sentiment_label,
+        "entities": recognized_entities
+    }
 
 '''
 def process_instagram_account(username, max_posts=20, output_file_path="processed_captions.csv"):
@@ -225,8 +243,10 @@ def process_instagram_account(username, max_posts=5):
             break
 
         caption = post.caption or "No caption"
-        sentiment = "positive"  # Replace with your sentiment analysis logic
-        entities = "entity1, entity2"  # Replace with your named entity recognition logic
+        # Call the function to get sentiment and entities
+        analysis_result = analyze_caption(caption)
+        sentiment = analysis_result["sentiment"]  # Get the sentiment
+        entities = ", ".join(analysis_result["entities"])  # Join entities into a single string
 
         # Validate post URL
         if not post.url:
@@ -242,17 +262,21 @@ def process_instagram_account(username, max_posts=5):
             continue
 
         # Perform image analysis
-        seg_map = segment_clothing(image)
+        #seg_map = segment_clothing(image)
         objects_detected = detect_objects(image)
         generated_caption = generate_caption(image)
+        
+        # Draw bounding boxes
+        processed_image = draw_bounding_boxes(image, objects_detected)
 
         # Append results
         data.append({
             "Caption": caption,
             "Sentiment": sentiment,
             "Named Entities": entities,
-            "Objects Detected": objects_detected,
             "Generated Caption": generated_caption,
+            "Image": f"data:image/jpeg;base64,{processed_image}",  # Embed the processed image
+            "Objects Detected": objects_detected
         })
 
     return data
