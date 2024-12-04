@@ -24,29 +24,31 @@ app.post('/api/fetch-data', (req, res) => {
   } 
 
   // Call the Python script with the username
-  const pythonProcess = spawn('python', ['process_instagram.py', username]);
+  const pythonProcess = spawn('python3', ['process_instagram.py', username]);
   let output = '';
   let errorOutput = '';
 
   // Capture Python script stdout
   pythonProcess.stdout.on('data', (data) => {
-    output += data.toString();
+    console.log(`[Python stdout]: ${data}`);
+    output += data.toString().trim(); // Ensure trailing newlines are removed
   });
 
   // Capture Python script stderr
   pythonProcess.stderr.on('data', (data) => {
-    errorOutput += data.toString();
+    console.error(`[Python stderr]: ${data}`);
   });
 
   // Handle the end of the Python process
   pythonProcess.on('close', (code) => {
     if (code !== 0) {
-      console.error(`Python script exited with code ${code}: ${errorOutput}`);
-      return res.status(500).json({ error: 'Failed to process data.' });
+      console.error(`Python script exited with code ${code}`);
+      return res.status(500).json({ error: `Python script exited with code ${code}` });
     }
 
     try {
       // Parse the Python script output (assumes JSON output for React)
+      console.log("Python output:", output);
       const result = JSON.parse(output);
       res.json(result);
     } catch (error) {
