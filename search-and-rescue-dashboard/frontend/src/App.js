@@ -41,43 +41,83 @@ const App = () => {
   };
 
   return (
-    <div className="App">
-      <h1>Social Network Profiler Dashboard</h1>
-      <div className="input-section">
-        <input
-          type="text"
-          placeholder="Enter Instagram username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <button onClick={handleSearch}>Search</button>
-      </div>
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {spreadsheetData && (
-        <div>
-          <h3>Processed Data:</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Caption</th>
-                <th>Sentiment</th>
-                <th>Named Entities</th>
-              </tr>
-            </thead>
-            <tbody>
-              {spreadsheetData.map((row, index) => (
-                <tr key={index}>
-                  <td>{row.Caption}</td>
-                  <td>{row.Sentiment}</td>
-                  <td>{row.Named_Entities}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="app-container">
+      <header className="header">
+        <h1>Social Network Profiler Dashboard</h1>
+        <p>Analyze Instagram captions for sentiment, named entities, and object recognition.</p>
+      </header>
+      <main>
+        <div className="search-section">
+          <input
+            type="text"
+            className="input-box"
+            placeholder="Enter Instagram username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button className="search-button" onClick={handleSearch}>
+            Search
+          </button>
         </div>
-      )}
+
+        {loading && <p className="loading-text">Loading...</p>}
+        {error && <p className="error-text">{error}</p>}
+
+        {spreadsheetData && (
+          <div className="results-section">
+            <h3>Processed Data</h3>
+            <div className="table-container">
+              <table className="results-table">
+              <thead>
+                <tr>
+                  <th>Caption</th>
+                  <th>Sentiment</th>
+                  <th>Named Entities</th>
+                  <th>Generated Caption</th>
+                  <th>Image</th>
+                  <th>Objects Detected</th>
+                </tr>
+              </thead>
+
+                <tbody>
+                  {spreadsheetData.map((row, index) => (
+                    <tr key={index}>
+                      <td>{row.Caption}</td>
+                      <td>{row.Sentiment}</td>
+                      <td>{row["Named Entities"]}</td>
+                      <td>{row["Generated Caption"]}</td>
+                      <td style={{width: "30%"}}>
+                        <img
+                          src={row.Image}
+                          alt="Detected objects"
+                          style={{ width: "100%", maxWidth: "9000px", border: "1px solid #ccc" }}
+                        />
+                      </td>
+                      <td style={{ verticalAlign: "top", paddingLeft: "15px", width: "15%" }}>
+                        <h4>Objects Detected:</h4>
+                        <ul style={{ listStyleType: "disc", margin: "0", padding: "0" }}>
+                          {row["Objects Detected"] && Array.isArray(row["Objects Detected"]) ? (
+                            row["Objects Detected"].map((obj, objIndex) => (
+                              <div key={objIndex}>
+                                <strong>{obj.label}</strong>: {obj.coordinates.join(", ")}
+                              </div>
+                            ))
+                          ) : (
+                            <li>No objects detected</li>
+                          )}
+                        </ul>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+      <footer className="footer">
+        <p>© 2024 Social Network Profiler. All rights reserved.</p>
+      </footer>
     </div>
   );
 };
