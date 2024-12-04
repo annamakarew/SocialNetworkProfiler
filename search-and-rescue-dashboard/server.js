@@ -1,28 +1,25 @@
-// Import the required packages
 const express = require('express');
 const cors = require('cors');
-const { spawn } = require('child_process');
+const axios = require('axios');
 
-// Create an Express app
 const app = express();
 
-// Enable CORS for the frontend origin (http://localhost:3000)
 app.use(cors({
-  origin: 'http://localhost:3000',  // Allow React to access the server
-  methods: ['GET', 'POST', 'OPTIONS'],        // Allow specific HTTP methods
-  allowedHeaders: ['Content-Type'], // Allow specific headers (Content-Type)
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
 }));
 
-app.use(express.json())
+app.use(express.json());
 
-// Define a simple endpoint to test the connection
-app.post('/api/fetch-data', (req, res) => {
+app.post('/api/fetch-data', async (req, res) => {
   const { username } = req.body;
-  // Check if the required data (username) is present
+
   if (!username) {
     return res.status(400).json({ error: 'Username is required' });
-  } 
+  }
 
+<<<<<<< HEAD
   // Call the Python script with the username
   const pythonProcess = spawn('python3', ['process_instagram.py', username]);
   let output = '';
@@ -56,9 +53,17 @@ app.post('/api/fetch-data', (req, res) => {
       res.status(500).json({ error: 'Error processing data.' });
     }
   });
+=======
+  try {
+    const response = await axios.post('http://localhost:8000/process', { username });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error calling Python API:', error);
+    res.status(500).json({ error: 'Failed to process data.' });
+  }
+>>>>>>> 8289d0ab4ee11d8b5439616886b4d5b775c59ca4
 });
 
-// Start the server on port 5001
 app.listen(5001, () => {
   console.log('Backend running on http://localhost:5001');
 });
