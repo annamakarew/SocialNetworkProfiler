@@ -65,7 +65,6 @@ const App = () => {
 
         {spreadsheetData && (
           <div className="results-section">
-            <h3>Processed Data</h3>
             <div className="table-container">
               <table className="results-table">
               <thead>
@@ -86,15 +85,14 @@ const App = () => {
                       <td>{row.Sentiment}</td>
                       <td>{row["Named Entities"]}</td>
                       <td>{row["Generated Caption"]}</td>
-                      <td style={{width: "30%"}}>
+                      <td style={{width: "22%"}}>
                         <img
                           src={row.Image}
                           alt="Detected objects"
                           style={{ width: "100%", maxWidth: "9000px", border: "1px solid #ccc" }}
                         />
                       </td>
-                      <td style={{ verticalAlign: "top", paddingLeft: "15px", width: "15%" }}>
-                        <h4>Objects Detected:</h4>
+                      <td style={{ verticalAlign: "top", paddingLeft: "15px", width: "15%", fontSize: "12px"}}>
                         <ul style={{ listStyleType: "disc", margin: "0", padding: "0" }}>
                           {row["Objects Detected"] && Array.isArray(row["Objects Detected"]) ? (
                             row["Objects Detected"].map((obj, objIndex) => (

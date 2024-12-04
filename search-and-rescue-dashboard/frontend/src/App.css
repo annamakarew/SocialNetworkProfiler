@@ -34,7 +34,6 @@ body {
 /* Search Section */
 .search-section {
   display: flex;
-  flex-direction: column; /* Stack items vertically */
   align-items: center; /* Center items horizontally */
   justify-content: center; /* Center items vertically */
   gap: 10px;
