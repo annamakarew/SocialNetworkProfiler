@@ -12,6 +12,7 @@ const App = () => {
   const [responseData, setResponseData] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [spreadsheetData, setSpreadsheetData] = useState(null);
 
   const handleSearch = async () => {
     // Check if the username is empty
@@ -23,63 +24,100 @@ const App = () => {
     setLoading(true);
     setError(null);
 
-    /*try {
-      // Make an API call to your backend to fetch Instagram data
-      const response = await axios.post(
-        'http://localhost:5001/api/fetch-data', 
-        { username },
-        { headers: { 'Content-Type': 'application/json'}}
-      );
-      
-      // Extract the data from the response
-      const { sentiment, objects } = response.data;
-
-      // Update state with the results
-      setSentimentData(sentiment);
-      setObjectRecognitionData(objects);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to fetch data. Please try again.');
-    } finally {
-      setLoading(false);
-    }*/
     try {
       // Send a POST request to the backend with the username
       const response = await axios.post('http://localhost:5001/api/fetch-data', {
           username,
       });
   
-      // Set the response data from the server to state
-      setResponseData(response.data);
+      // Set the returned spreadsheet data
+      setSpreadsheetData(response.data);
     } catch (error) {
-      console.error('Error posting data:', error);
-      setError('Error connecting to the backend.');  // Show error message if something goes wrong
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch data. Please try again.');
     } finally {
-      setLoading(false);  // Set loading to false once the request is completed
+      setLoading(false);
     }
   };
 
   return (
-    <div className="App">
-      <h1>Social Network Profiler Dashboard</h1>
-      <div className="input-section">
-        <input
-          type="text"
-          placeholder="Enter Instagram username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <button onClick={handleSearch}>Search</button>
-      </div>
-      {/* Display response data or error */}
-      {responseData && (
-        <div>
-          <h3>Response from Backend:</h3>
-          <p>Username: {responseData.username}</p>
+    <div className="app-container">
+      <header className="header">
+        <h1>Social Network Profiler Dashboard</h1>
+        <p>Analyze Instagram captions for sentiment, named entities, and object recognition.</p>
+      </header>
+      <main>
+        <div className="search-section">
+          <input
+            type="text"
+            className="input-box"
+            placeholder="Enter Instagram username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button className="search-button" onClick={handleSearch}>
+            Search
+          </button>
         </div>
-      )}
-      {sentimentData && <SentimentAnalysis data={sentimentData} />}
-      {objectRecognitionData && <ObjectRecognition data={objectRecognitionData} />}
+
+        {loading && <p className="loading-text">Loading...</p>}
+        {error && <p className="error-text">{error}</p>}
+
+        {spreadsheetData && (
+          <div className="results-section">
+            <h3>Processed Data</h3>
+            <div className="table-container">
+              <table className="results-table">
+              <thead>
+                <tr>
+                  <th>Caption</th>
+                  <th>Sentiment</th>
+                  <th>Named Entities</th>
+                  <th>Generated Caption</th>
+                  <th>Image</th>
+                  <th>Objects Detected</th>
+                </tr>
+              </thead>
+
+                <tbody>
+                  {spreadsheetData.map((row, index) => (
+                    <tr key={index}>
+                      <td>{row.Caption}</td>
+                      <td>{row.Sentiment}</td>
+                      <td>{row["Named Entities"]}</td>
+                      <td>{row["Generated Caption"]}</td>
+                      <td style={{width: "30%"}}>
+                        <img
+                          src={row.Image}
+                          alt="Detected objects"
+                          style={{ width: "100%", maxWidth: "9000px", border: "1px solid #ccc" }}
+                        />
+                      </td>
+                      <td style={{ verticalAlign: "top", paddingLeft: "15px", width: "15%" }}>
+                        <h4>Objects Detected:</h4>
+                        <ul style={{ listStyleType: "disc", margin: "0", padding: "0" }}>
+                          {row["Objects Detected"] && Array.isArray(row["Objects Detected"]) ? (
+                            row["Objects Detected"].map((obj, objIndex) => (
+                              <div key={objIndex}>
+                                <strong>{obj.label}</strong>: {obj.coordinates.join(", ")}
+                              </div>
+                            ))
+                          ) : (
+                            <li>No objects detected</li>
+                          )}
+                        </ul>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+      <footer className="footer">
+        <p>© 2024 Social Network Profiler. All rights reserved.</p>
+      </footer>
     </div>
   );
 };
