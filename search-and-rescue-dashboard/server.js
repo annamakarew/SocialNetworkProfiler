@@ -19,7 +19,6 @@ app.post('/api/fetch-data', async (req, res) => {
     return res.status(400).json({ error: 'Username is required' });
   }
 
-<<<<<<< HEAD
   // Call the Python script with the username
   const pythonProcess = spawn('python3', ['process_instagram.py', username]);
   let output = '';
@@ -53,15 +52,6 @@ app.post('/api/fetch-data', async (req, res) => {
       res.status(500).json({ error: 'Error processing data.' });
     }
   });
-=======
-  try {
-    const response = await axios.post('http://localhost:8000/process', { username });
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error calling Python API:', error);
-    res.status(500).json({ error: 'Failed to process data.' });
-  }
->>>>>>> 8289d0ab4ee11d8b5439616886b4d5b775c59ca4
 });
 
 app.listen(5001, () => {
