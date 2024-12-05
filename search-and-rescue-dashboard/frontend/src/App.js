@@ -13,6 +13,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [spreadsheetData, setSpreadsheetData] = useState(null);
+  const [displayTime, setDisplayTime] = useState(null); // New state for display time
 
   const handleSearch = async () => {
     // Check if the username is empty
@@ -23,6 +24,7 @@ const App = () => {
 
     setLoading(true);
     setError(null);
+    setSpreadsheetData(null); // Clear previous data
 
     try {
       // Send a POST request to the backend with the username
@@ -32,6 +34,17 @@ const App = () => {
   
       // Set the returned spreadsheet data
       setSpreadsheetData(response.data);
+
+      // Measure the time to display the results
+      const displayStartTime = performance.now();
+      setTimeout(() => {
+        const displayEndTime = performance.now();
+        const timeTaken = (displayEndTime - displayStartTime) / 1000; // Convert to seconds
+        setDisplayTime(timeTaken);
+
+        // Log the display time (you can also save this to a server if needed)
+        console.log(`Time taken to display results: ${timeTaken.toFixed(2)} seconds`);
+      }, 0); // Ensure this happens right after rendering
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to fetch data. Please try again.');
@@ -85,7 +98,7 @@ const App = () => {
                       <td>{row.Sentiment}</td>
                       <td>{row["Named Entities"]}</td>
                       <td>{row["Generated Caption"]}</td>
-                      <td style={{width: "22%"}}>
+                      <td style={{width: "25%"}}>
                         <img
                           src={row.Image}
                           alt="Detected objects"

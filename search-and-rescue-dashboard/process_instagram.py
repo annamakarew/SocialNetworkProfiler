@@ -4,7 +4,9 @@ import torch
 import sys
 import json
 import requests
+import time
 import io
+import csv
 import logging
 from PIL import Image, ImageDraw, ImageFont
 import base64
@@ -173,6 +175,9 @@ def analyze_caption(caption):
         "5 stars": "positive"
     }
 
+    # Start timer for text analysis
+    start_time = time.time()
+
     # Perform sentiment analysis
     sentiment_result = sentiment_pipeline(caption)
     star_label = sentiment_result[0]["label"].lower()
@@ -195,10 +200,15 @@ def analyze_caption(caption):
     if current_entity:
         recognized_entities.append(current_entity)
 
+     # Stop timer and calculate processing time
+    end_time = time.time()
+    processing_time = end_time - start_time
+
     # Return sentiment and entities
     return {
         "sentiment": sentiment_label,
-        "entities": recognized_entities
+        "entities": recognized_entities,
+        "processing_time": processing_time
     }
 
 '''
@@ -211,7 +221,7 @@ def process_instagram_account(username, max_posts=20, output_file_path="processe
     return processed_file
 '''
 
-def process_instagram_account(username, max_posts=5):
+def process_instagram_account(username, max_posts=10):
     loader = instaloader.Instaloader()
     loader.context.quiet = True
 
@@ -237,47 +247,62 @@ def process_instagram_account(username, max_posts=5):
 
     profile = instaloader.Profile.from_username(loader.context, username)
     data = []
+    log_file="text_analysis_times.csv";
+    # Open the log file for writing
+    with open(log_file, mode="w", newline="") as log_file_obj:
+        log_writer = csv.writer(log_file_obj)
+        log_writer.writerow(["Post Index", "Processing Time (seconds)"])  # Write header row
 
-    for post_index, post in enumerate(profile.get_posts()):
-        if post_index >= max_posts:
-            break
+        for post_index, post in enumerate(profile.get_posts()):
+            if post_index >= max_posts:
+                break
 
-        caption = post.caption or "No caption"
-        # Call the function to get sentiment and entities
-        analysis_result = analyze_caption(caption)
-        sentiment = analysis_result["sentiment"]  # Get the sentiment
-        entities = ", ".join(analysis_result["entities"])  # Join entities into a single string
+            caption = post.caption or "No caption"
+            # Call the function to get sentiment and entities
+            analysis_result = analyze_caption(caption)
+            sentiment = analysis_result["sentiment"]  # Get the sentiment
+            entities = ", ".join(analysis_result["entities"])  # Join entities into a single string
+            processing_time = analysis_result["processing_time"];
+            
+            # Validate post URL
+            if not post.url:
+                print(f"Post {post_index + 1} has no valid image URL. Skipping.", file=sys.stderr)
+                continue
 
-        # Validate post URL
-        if not post.url:
-            print(f"Post {post_index + 1} has no valid image URL. Skipping.", file=sys.stderr)
-            continue
+            try:
+                response = requests.get(post.url)
+                response.raise_for_status()  # Raise an error for bad status codes
+                image = Image.open(io.BytesIO(response.content)).convert("RGB")
+            except Exception as e:
+                print(f"Failed to download or process image for post {post_index + 1}: {e}", file=sys.stderr)
+                continue
 
-        try:
-            response = requests.get(post.url)
-            response.raise_for_status()  # Raise an error for bad status codes
-            image = Image.open(io.BytesIO(response.content)).convert("RGB")
-        except Exception as e:
-            print(f"Failed to download or process image for post {post_index + 1}: {e}", file=sys.stderr)
-            continue
+            # Measure processing time
+            #start_time = time.time()
 
-        # Perform image analysis
-        #seg_map = segment_clothing(image)
-        objects_detected = detect_objects(image)
-        generated_caption = generate_caption(image)
-        
-        # Draw bounding boxes
-        processed_image = draw_bounding_boxes(image, objects_detected)
+            # Perform image analysis
+            objects_detected = detect_objects(image)
+            generated_caption = generate_caption(image)
+            
+            # Draw bounding boxes
+            processed_image = draw_bounding_boxes(image, objects_detected)
 
-        # Append results
-        data.append({
-            "Caption": caption,
-            "Sentiment": sentiment,
-            "Named Entities": entities,
-            "Generated Caption": generated_caption,
-            "Image": f"data:image/jpeg;base64,{processed_image}",  # Embed the processed image
-            "Objects Detected": objects_detected
-        })
+            #end_time = time.time()
+            #processing_time = end_time - start_time
+
+            # Write processing time to the log file
+            log_writer.writerow([post_index + 1, processing_time])
+
+            # Append results
+            data.append({
+                "Caption": caption,
+                "Sentiment": sentiment,
+                "Named Entities": entities,
+                "Generated Caption": generated_caption,
+                "Image": f"data:image/jpeg;base64,{processed_image}",  # Embed the processed image
+                "Objects Detected": objects_detected,
+                "Processing Time (seconds)": processing_time
+            })
 
     return data
 
